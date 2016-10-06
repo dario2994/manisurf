@@ -21,6 +21,8 @@ std::vector<std::array<double, 3>> spheres;
 int WindowHandle = 0;
 int mouse_x = -1, mouse_y = -1;
 
+GLdouble perspective_matrix[16];
+
 bool gluInvertMatrix(const double m[16], double invOut[16])
 {
     double inv[16], det;
@@ -177,6 +179,7 @@ void ResizeFunction(int Width, int Height){
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(39, 1.0*CurrentWidth/CurrentHeight, 0.6, 10);
+    glGetDoublev(GL_PROJECTION_MATRIX, perspective_matrix);
 	glMatrixMode(GL_MODELVIEW);
 	glViewport(0, 0, CurrentWidth, CurrentHeight);
 }
@@ -190,37 +193,41 @@ void RenderFunction(void){
     last_frame_time = frame_time;
 
     double mouse_relx = mouse_x - CurrentWidth/2;
-    double mouse_rely = mouse_y - CurrentHeight/2;
+    double mouse_rely = -mouse_y + CurrentHeight/2;
     double mouse_power = sqrt(mouse_relx*mouse_relx + mouse_rely*mouse_rely);
     double window_diag = sqrt(CurrentWidth*CurrentWidth+CurrentHeight*CurrentHeight);
 
-    if (mouse_x != -1 && mouse_power > window_diag/5.0) {
+    if (mouse_x != -1 && mouse_power > window_diag/10.0) {
         // double mouse_angle = atan2(mouse_relx, mouse_rely)/M_PI*360;
         mouse_power = mouse_power/16000000*frame_microseconds;
-        glMatrixMode(GL_MODELVIEW);
+        glMatrixMode(GL_PROJECTION);
         // glRotated(-mouse_power, 0, 1, 0);
         
         GLdouble axis[4] = {mouse_rely, -mouse_relx, 0, 0};
         GLdouble current_matrix[16];
-        glGetDoublev(GL_MODELVIEW_MATRIX, current_matrix);
+        glGetDoublev(GL_PROJECTION_MATRIX, current_matrix);
         GLdouble inverse_matrix[16];
         // glm::inverse(current_matrix);
         gluInvertMatrix(current_matrix, inverse_matrix);
         
-        
-        
-        for (int i = 0; i < 4; i++) {
+        /*for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
                 std::cout << current_matrix[4*i+j] << " ";
             }
             std::cout << std::endl;
         }
-        std::cout << std::endl;
+        std::cout << std::endl;*/
         
+        GLdouble temp[4] = {0, 0, 0, 0};
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                temp[j] += perspective_matrix[4*j+i]*axis[i];
+            }
+        }
         GLdouble absolute_axis[4] = {0, 0, 0, 0};
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
-                absolute_axis[i] += inverse_matrix[4*i+j]*axis[j];
+                absolute_axis[j] += inverse_matrix[4*j+i]*temp[i];
             }
         }
         glRotated(-mouse_power, absolute_axis[0], absolute_axis[1], absolute_axis[2]);
